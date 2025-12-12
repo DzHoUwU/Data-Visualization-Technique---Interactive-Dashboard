@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization Project ChatGPT Public Attitudes</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    
+    <style>
+        /* === Industrial Precision Style Color Scheme === */
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: rgba(20, 20, 20, 0.4);
+            --tech-blue: #00f3ff;
+            --tech-red: #ff4b4b;
+            --tech-white: rgba(255, 255, 255, 0.9);
+            --tech-dim: rgba(255, 255, 255, 0.4);
+            --grid-line: rgba(0, 243, 255, 0.1);
+            --font-mono: 'Consolas', 'Monaco', 'Courier New', monospace;
+            --font-sans: 'Helvetica Neue', 'Arial', sans-serif;
+        }
+
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-color); font-family: var(--font-sans); overflow: hidden; color: var(--tech-white); }
+        .engineering-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size: 50px 50px; opacity: 0.3; z-index: -1; pointer-events: none; }
+        .page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1); }
+        .page.active { opacity: 1; pointer-events: all; }
+
+        /* PAGE 1 Landing */
+        #chart-landing { width: 85%; height: 55vh; border-bottom: 1px solid var(--grid-line); }
+        .landing-text-box { text-align: left; z-index: 10; margin-top: 20px; width: 85%; font-family: var(--font-mono); }
+        .status-line { color: var(--tech-blue); font-size: 0.9rem; letter-spacing: 2px; margin-bottom: 5px; display: flex; align-items: center; }
+        .cursor-blink { display: inline-block; width: 8px; height: 15px; background: var(--tech-blue); margin-left: 5px; animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .main-headline { font-size: 2.5rem; font-weight: 300; color: #fff; letter-spacing: -1px; margin: 0; }
+        .enter-btn { margin-top: 30px; padding: 12px 30px; background: transparent; border: 1px solid var(--tech-blue); color: var(--tech-blue); font-family: var(--font-mono); font-size: 0.9rem; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+        .enter-btn:hover { background: rgba(0, 243, 255, 0.1); box-shadow: 0 0 15px rgba(0, 243, 255, 0.2); }
+
+        /* PAGE 2 Menu */
+        .title-container { text-align: center; margin-bottom: 40px; }
+        .menu-header { font-family: var(--font-mono); font-size: 0.8rem; color: var(--tech-blue); letter-spacing: 4px; margin-bottom: 10px; text-transform: uppercase; }
+        .menu-title { font-size: 3.5rem; font-weight: 700; color: #fff; letter-spacing: -2px; }
+        
+        .control-panel { display: flex; gap: 20px; justify-content: center; margin-bottom: 40px; }
+        .action-btn { background: rgba(0,0,0,0.5); border: 1px solid var(--tech-dim); color: var(--tech-dim); padding: 10px 20px; font-family: var(--font-mono); cursor: pointer; transition: all 0.3s; font-size: 0.8rem; display: flex; align-items: center; gap: 10px; text-transform: uppercase; }
+        .action-btn:hover { border-color: var(--tech-blue); color: #fff; transform: translateY(-2px); }
+        .btn-pos:hover { border-color: var(--tech-blue); box-shadow: 0 0 10px rgba(0, 243, 255, 0.2); }
+        .btn-neg:hover { border-color: var(--tech-red); color: #fff; box-shadow: 0 0 10px rgba(255, 75, 75, 0.2); }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 80%; max-width: 1200px; }
+        .occupation-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 20px; cursor: pointer; position: relative; transition: all 0.2s; }
+        .occupation-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--tech-dim); transition: 0.2s; }
+        .occupation-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+        .occupation-card:hover::before { background: var(--tech-blue); box-shadow: 0 0 10px var(--tech-blue); }
+        .card-code { font-family: var(--font-mono); font-size: 0.7rem; color: var(--tech-dim); margin-bottom: 10px; }
+        .card-name { font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 15px; height: 50px; display: flex; align-items: center; line-height: 1.2; }
+        .card-metric { font-family: var(--font-mono); font-size: 1.5rem; color: var(--tech-blue); text-align: right; }
+
+        /* PAGE 3 Detail */
+        .detail-header { width: 90%; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        .back-btn { font-family: var(--font-mono); color: var(--tech-dim); cursor: pointer; font-size: 0.9rem; }
+        .back-btn:hover { color: var(--tech-blue); }
+        .detail-layout { display: flex; width: 90%; height: 70vh; gap: 20px; }
+        .panel { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); padding: 20px; }
+        .left-panel { flex: 1; display: flex; flex-direction: column; }
+        .right-panel { flex: 2; }
+        .panel-label { font-family: var(--font-mono); font-size: 0.7rem; color: var(--tech-dim); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-block { margin-bottom: 20px; border-left: 2px solid var(--tech-dim); padding-left: 10px; }
+        .stat-val { font-size: 2rem; font-weight: 300; line-height: 1; }
+        .stat-desc { font-size: 0.8rem; color: #888; margin-top: 5px; }
+
+        /* Image Zoom Styles */
+        .img-container { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid rgba(0, 243, 255, 0.2); background: rgba(0,0,0,0.2); border-radius: 8px; position: relative; transition: border-color 0.3s; }
+        .img-container:hover { border-color: var(--tech-blue); cursor: zoom-in; }
+        .zoom-hint { position: absolute; bottom: 5px; right: 10px; font-family: var(--font-mono); font-size: 0.6rem; color: var(--tech-blue); opacity: 0; transition: opacity 0.3s; background: rgba(0,0,0,0.7); padding: 2px 5px; }
+        .img-container:hover .zoom-hint { opacity: 1; }
+
+        /* PAGE 4 Ranking */
+        .ranking-container { width: 80%; max-width: 1000px; display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+        .ranking-row { 
+            display: flex; align-items: center; padding: 15px 20px; 
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1);
+            position: relative; overflow: hidden;
+            opacity: 0;
+        }
+        .rank-bar-bg { position: absolute; top: 0; left: 0; bottom: 0; background: rgba(255,255,255,0.03); z-index: 0; width: 0%; transition: width 1s cubic-bezier(0.25, 1, 0.5, 1); }
+        .rank-number { font-family: var(--font-mono); font-size: 1.2rem; color: var(--tech-dim); width: 50px; z-index: 1; }
+        .rank-name { font-size: 1rem; color: #fff; flex: 1; z-index: 1; font-weight: 600; letter-spacing: 0.5px; }
+        .rank-stats { text-align: right; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; }
+        .rank-percent { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; line-height: 1; }
+        .rank-absolute { font-family: var(--font-mono); font-size: 0.75rem; color: var(--tech-dim); margin-top: 4px; }
+        
+        .theme-pos .rank-percent { color: var(--tech-blue); }
+        .theme-pos .rank-bar-bg { background: rgba(0, 243, 255, 0.1); border-right: 2px solid var(--tech-blue); }
+        .theme-neg .rank-percent { color: var(--tech-red); }
+        .theme-neg .rank-bar-bg { background: rgba(255, 75, 75, 0.1); border-right: 2px solid var(--tech-red); }
+
+        /* === MODAL (Lightbox) === */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; /* Hidden by default */
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.open { opacity: 1; pointer-events: all; }
+        
+        .modal-content-wrapper {
+            position: relative;
+            max-width: 90%; max-height: 90%;
+            border: 1px solid var(--tech-blue);
+            box-shadow: 0 0 50px rgba(0, 243, 255, 0.15);
+            background: #000;
+            transform: scale(0.8); /* Start smaller for animation */
+        }
+        
+        .modal-img {
+            display: block;
+            max-width: 100%; max-height: 85vh;
+            object-fit: contain;
+        }
+
+        .modal-ui-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            padding: 10px;
+            background: rgba(0, 243, 255, 0.1);
+            border-top: 1px solid var(--tech-blue);
+            display: flex; justify-content: space-between; align-items: center;
+            font-family: var(--font-mono); font-size: 0.8rem; color: var(--tech-blue);
+        }
+        
+        .modal-close-btn {
+            cursor: pointer;
+            border: 1px solid var(--tech-blue);
+            padding: 5px 15px;
+            background: rgba(0,0,0,0.5);
+            transition: all 0.2s;
+        }
+        .modal-close-btn:hover { background: var(--tech-blue); color: #000; }
+    </style>
+</head>
+<body>
+    <div class="engineering-bg"></div>
+
+    <div id="zoom-modal" class="modal-overlay" onclick="closeZoom()">
+        <div class="modal-content-wrapper" onclick="event.stopPropagation()">
+            <img id="modal-full-img" class="modal-img" src="">
+            <div class="modal-ui-bar">
+                <span>// VISUALIZATION MODE: ENHANCED</span>
+                <div class="modal-close-btn" onclick="closeZoom()">[ TERMINATE VIEW ]</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-landing" class="page active">
+        <div id="chart-landing"></div>
+        <div class="landing-text-box">
+            <div class="status-line">
+                <span>PROJECT: Data Visualization// TWITTER DATASET (DEC 2022)</span>
+                <span class="cursor-blink"></span>
+            </div>
+            <h1 class="main-headline">COMPREHENSIVE ANALYSIS: PUBLIC ATTITUDES TOWARD EARLY-STAGE CHATGPT</h1>
+            <button class="enter-btn" onclick="goToMain()">INITIALIZE MODEL</button>
+        </div>
+    </div>
+
+    <div id="page-main" class="page">
+        <div class="title-container">
+            <div class="menu-header">// COMPARATIVE STUDY: SECTOR ANALYSIS</div>
+            <div class="menu-title">OCCUPATIONAL PERCEPTION GAP</div>
+        </div>
+        
+        <div class="control-panel">
+            <button class="action-btn btn-pos" onclick="showRanking('pos')">
+                <span>▲ SORT BY POSITIVE</span>
+            </button>
+            <button class="action-btn btn-neg" onclick="showRanking('neg')">
+                <span>▼ SORT BY NEGATIVE</span>
+            </button>
+        </div>
+
+        <div class="cards-grid" id="cards-container"></div>
+    </div>
+
+    <div id="page-detail" class="page">
+        <div class="detail-header">
+            <div class="back-btn" onclick="goToMain()">[ ESC ] RETURN TO OVERVIEW</div>
+            <div style="text-align: right;">
+                <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--tech-dim);">TARGET COHORT</div>
+                <div id="detail-title" style="font-size: 1.5rem; color: #fff;">SEGMENT NAME</div>
+            </div>
+        </div>
+        
+        <div class="detail-layout">
+            <div class="panel left-panel">
+                <div class="panel-label">Sentiment Inference (RoBERTa Model)</div>
+                <div class="stat-block" style="border-color: var(--tech-blue);">
+                    <div class="stat-val" id="val-pos" style="color:var(--tech-blue)">0%</div>
+                    <div class="stat-desc">POSITIVE (ACCEPTANCE)</div>
+                </div>
+                <div class="stat-block" style="border-color: #ff4b4b;">
+                    <div class="stat-val" id="val-neg" style="color:#ff4b4b">0%</div>
+                    <div class="stat-desc">NEGATIVE (CAUTION)</div>
+                </div>
+
+                <div class="panel-label" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                    Semantic Field (Top Keywords)
+                </div>
+                <div class="img-container" onclick="triggerZoom()">
+                    <img id="img-wordcloud" src="" alt="Select a cohort to view word cloud" style="max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.3)); opacity: 0;">
+                    <div class="zoom-hint">[ + CLICK TO ENLARGE ]</div>
+                </div>
+
+                <div id="chart-pie" style="flex:1; width:100%; margin-top:10px;"></div>
+            </div>
+
+            <div class="panel right-panel">
+                <div class="panel-label">Geospatial Distribution (Twitter Metadata)</div>
+                <div id="chart-map" style="width: 100%; height: 90%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-ranking" class="page">
+        <div class="detail-header">
+            <div class="back-btn" onclick="goToMain()">[ ESC ] RETURN TO OVERVIEW</div>
+            <div style="text-align: right;">
+                <div style="font-family:var(--font-mono); font-size:0.8rem; color:var(--tech-dim);">GLOBAL SORTING</div>
+                <div id="ranking-title" style="font-size: 1.5rem; color: #fff;">POSITIVE RANKING</div>
+            </div>
+        </div>
+        <div class="ranking-container" id="ranking-list"></div>
+    </div>
+
+    <script>
+        // === 1. Image Mapping (使用占位图演示) ===
+        const wordCloudImages = { "Business and administration professionals": "images/wordcloud_business_admin.png", 
+
+        "Health professionals": "images/wordcloud_health.png", 
+
+        "Information and communications technology professionals": "images/wordcloud_ict.png", 
+
+        "Legal, social and cultural professionals": "images/wordcloud_legal_social_cultural.png", 
+
+        "Science and engineering professionals": "images/wordcloud_sci_eng.png", 
+
+        "Teaching professionals": "images/wordcloud_teaching.png" 
+
+        };
+
+        // === 2. Data Source ===
+        const aggregatedData = {
+            "Business and administration professionals": { "count": 2403, "pos": 44.0, "neg": 13.0, "code": "BUS-ADMIN", "mapData": [{"name": "United States", "value": 563}, {"name": "India", "value": 204}] },
+            "Health professionals": { "count": 626, "pos": 45.0, "neg": 14.0, "code": "HEALTH", "mapData": [{"name": "United States", "value": 212}, {"name": "United Kingdom", "value": 31}] },
+            "Information and communications technology professionals": { "count": 6874, "pos": 42.0, "neg": 14.0, "code": "ICT", "mapData": [{"name": "United States", "value": 1187}, {"name": "India", "value": 525}] },
+            "Legal, social and cultural professionals": { "count": 2992, "pos": 38.0, "neg": 16.0, "code": "SOC-CULT", "mapData": [{"name": "United States", "value": 634}, {"name": "United Kingdom", "value": 178}] },
+            "Science and engineering professionals": { "count": 3819, "pos": 38.0, "neg": 15.0, "code": "SCI-ENG", "mapData": [{"name": "United States", "value": 769}, {"name": "United Kingdom", "value": 243}] },
+            "Teaching professionals": { "count": 787, "pos": 38.0, "neg": 14.0, "code": "TEACH", "mapData": [{"name": "United States", "value": 232}, {"name": "United Kingdom", "value": 53}] }
+        };
+
+        // Base waveform data
+        let xData = [];
+        let yData = [];
+        for (let i = 0; i < 100; i++) { xData.push(i); yData.push(50); }
+
+        let mouseSpeed = 0; let lastMouseX = 0; let lastMouseY = 0; let agitationLevel = 0; 
+        const SENSITIVITY = 0.0005; const THRESHOLD = 50; const DECAY = 0.85; const MAX_NOISE = 0.8;      
+
+        document.addEventListener('mousemove', (e) => {
+            const dx = e.clientX - lastMouseX; const dy = e.clientY - lastMouseY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            mouseSpeed = dist; 
+            if (mouseSpeed > THRESHOLD) { agitationLevel += mouseSpeed * SENSITIVITY; }
+            agitationLevel = Math.min(agitationLevel, MAX_NOISE); 
+            lastMouseX = e.clientX; lastMouseY = e.clientY;
+        });
+
+        setInterval(() => {
+            agitationLevel *= DECAY; if(agitationLevel < 0.001) agitationLevel = 0;
+        }, 50);
+
+        function initLandingChart() {
+            const chartDom = document.getElementById('chart-landing');
+            if(!chartDom) return;
+            const chart = echarts.init(chartDom);
+            const option = {
+                backgroundColor: 'transparent',
+                grid: { top: '15%', bottom: '15%', left: '5%', right: '5%', show: true, borderColor: 'rgba(0, 243, 255, 0.1)' },
+                xAxis: { type: 'category', data: xData, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } }, axisTick: { show: true }, axisLabel: { color: 'rgba(255,255,255,0.5)', fontFamily: 'Consolas' }, splitLine: { show: true, lineStyle: { color: 'rgba(0, 243, 255, 0.05)', type: 'dashed' } } },
+                yAxis: { type: 'value', min: 0, max: 100, splitLine: { show: true, lineStyle: { color: 'rgba(0, 243, 255, 0.05)', type: 'dashed' } }, axisLabel: { show: true, color: 'rgba(255,255,255,0.5)', fontFamily: 'Consolas' } },
+                series: [{
+                    name: 'Signal', type: 'line', smooth: 0.3, symbol: 'rect', symbolSize: 4, showSymbol: true,
+                    lineStyle: { color: '#00f3ff', width: 1.5, type: 'solid' },
+                    itemStyle: { color: '#fff', borderColor: '#00f3ff' },
+                    areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(0, 243, 255, 0.15)' }, { offset: 1, color: 'rgba(0, 243, 255, 0)' }]) },
+                    data: yData
+                }]
+            };
+            chart.setOption(option);
+
+            setInterval(() => {
+                let newData = [];
+                let time = Date.now() / 1000;
+                for (let i = 0; i < 100; i++) {
+                    let carrier = Math.sin((i / 10) + (time * 0.5)) * 10;
+                    let modulation = Math.cos((i / 3) + (time * 1.5)) * 5;
+                    let breathing = Math.sin(time * 0.2) * 5;
+                    let base = 50 + carrier + modulation + breathing;
+                    let noise = 0;
+                    if (agitationLevel > 0.01) { noise = (Math.random() - 0.5) * agitationLevel * 8; }
+                    newData.push(base + noise);
+                }
+                chart.setOption({ series: [{ data: newData }] });
+            }, 50); 
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // === Navigation Logic ===
+        function switchPage(pageId) {
+            document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            // Ensure modal is closed when switching pages
+            closeZoom();
+        }
+
+        function goToMain() {
+            switchPage('page-main');
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
+            
+            let delay = 0;
+            const orderedKeys = [
+                "Health professionals",
+                "Teaching professionals",
+                "Information and communications technology professionals",
+                "Science and engineering professionals",
+                "Legal, social and cultural professionals",
+                "Business and administration professionals"
+            ];
+
+            orderedKeys.forEach((key) => {
+                if (aggregatedData[key]) {
+                    const data = aggregatedData[key];
+                    const card = document.createElement('div');
+                    card.className = 'occupation-card';
+                    card.style.animation = `fadeInUp 0.5s ease forwards ${delay}s`; 
+                    card.innerHTML = `
+                        <div class="card-code">// ${data.code}</div>
+                        <div class="card-name">${key}</div>
+                        <div class="card-metric">${data.count.toLocaleString()}</div>
+                    `;
+                    card.onclick = () => showDetail(key);
+                    container.appendChild(card);
+                    delay += 0.1;
+                }
+            });
+            anime({ targets: '.occupation-card', opacity: [0, 1], translateY: [20, 0], delay: anime.stagger(100), easing: 'easeOutQuad' });
+        }
+
+        function showRanking(mode) {
+            switchPage('page-ranking');
+            const container = document.getElementById('ranking-list');
+            const title = document.getElementById('ranking-title');
+            
+            container.innerHTML = ''; 
+            
+            const dataArray = Object.keys(aggregatedData).map(key => {
+                const item = aggregatedData[key];
+                return { name: key, pos: item.pos, neg: item.neg, total: item.count };
+            });
+
+            let sortedData;
+            if (mode === 'pos') {
+                sortedData = dataArray.sort((a, b) => b.pos - a.pos);
+                title.innerText = "POSITIVE SENTIMENT RANKING";
+                title.style.color = "var(--tech-blue)";
+                container.className = "ranking-container theme-pos";
+            } else {
+                sortedData = dataArray.sort((a, b) => b.neg - a.neg);
+                title.innerText = "NEGATIVE SENTIMENT RANKING";
+                title.style.color = "var(--tech-red)";
+                container.className = "ranking-container theme-neg";
+            }
+
+            sortedData.forEach((item, index) => {
+                const percentage = mode === 'pos' ? item.pos : item.neg;
+                const absoluteVal = Math.round((percentage / 100) * item.total);
+                
+                const row = document.createElement('div');
+                row.className = 'ranking-row';
+                row.innerHTML = `
+                    <div class="rank-bar-bg" style="width: 0%"></div>
+                    <div class="rank-number">0${index + 1}</div>
+                    <div class="rank-name">${item.name}</div>
+                    <div class="rank-stats">
+                        <div class="rank-percent">${percentage}%</div>
+                        <div class="rank-absolute">${absoluteVal.toLocaleString()} / ${item.total.toLocaleString()}</div>
+                    </div>
+                `;
+                container.appendChild(row);
+
+                setTimeout(() => {
+                    const bar = row.querySelector('.rank-bar-bg');
+                    bar.style.width = percentage + '%';
+                }, 100 + (index * 100));
+            });
+
+            anime({
+                targets: '.ranking-row', opacity: [0, 1], translateX: [-20, 0],
+                delay: anime.stagger(100), easing: 'easeOutQuad'
+            });
+        }
+
+        // === ZOOM FUNCTIONALITY (NEW) ===
+        function triggerZoom() {
+            const currentImg = document.getElementById('img-wordcloud');
+            if(!currentImg.src) return;
+
+            const modal = document.getElementById('zoom-modal');
+            const modalImg = document.getElementById('modal-full-img');
+            
+            modalImg.src = currentImg.src;
+            modal.classList.add('open');
+            
+            // Animate Modal Entrance
+            anime({
+                targets: '.modal-content-wrapper',
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                duration: 400,
+                easing: 'easeOutExpo'
+            });
+        }
+
+        function closeZoom() {
+            const modal = document.getElementById('zoom-modal');
+            modal.classList.remove('open');
+        }
+
+        // === Detail View Logic ===
+        function showDetail(occupationName) {
+            const data = aggregatedData[occupationName];
+            if (!data) return;
+
+            document.getElementById('detail-title').innerText = occupationName.toUpperCase();
+            document.getElementById('val-pos').innerText = data.pos + '%';
+            document.getElementById('val-neg').innerText = data.neg + '%';
+
+            switchPage('page-detail');
+
+            const imgPath = wordCloudImages[occupationName];
+            const imgElement = document.getElementById('img-wordcloud');
+            imgElement.style.opacity = 0;
+            imgElement.src = "";
+            
+            if (imgPath) {
+                imgElement.src = imgPath;
+                imgElement.onload = () => {
+                    anime({ targets: '#img-wordcloud', opacity: [0, 1], scale: [0.95, 1], duration: 800, easing: 'easeOutExpo' });
+                };
+            }
+
+            // Charts
+            const chartDom = document.getElementById('chart-pie');
+            echarts.dispose(chartDom); 
+            const pieChart = echarts.init(chartDom);
+            pieChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+                legend: { bottom: '0%', left: 'center', textStyle: { color: '#fff' } },
+                series: [{
+                    name: 'Sentiment', type: 'pie', radius: ['50%', '70%'], center: ['50%', '45%'],
+                    itemStyle: { borderRadius: 5, borderColor: '#000', borderWidth: 2 },
+                    label: { show: false },
+                    data: [
+                        { value: data.pos, name: 'Positive', itemStyle: { color: '#00f3ff' } },
+                        { value: data.neg, name: 'Negative', itemStyle: { color: '#ff4b4b' } },
+                        { value: (100 - data.pos - data.neg).toFixed(1), name: 'Neutral', itemStyle: { color: '#333' } }
+                    ]
+                }]
+            });
+
+            const mapChartDom = document.getElementById('chart-map');
+            echarts.dispose(mapChartDom);
+            const mapChart = echarts.init(mapChartDom);
+            mapChart.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+                visualMap: { min: 0, max: 500, text: ['High', 'Low'], realtime: false, calculable: true, inRange: { color: ['#1a2a3a', '#00f3ff'] }, textStyle: { color: '#fff' }, left: 'left', bottom: 'bottom' },
+                geo: { map: 'world', roam: true, itemStyle: { areaColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.2)', borderWidth: 1 }, emphasis: { areaColor: 'rgba(0, 243, 255, 0.2)' } },
+                series: [{ type: 'map', geoIndex: 0, data: data.mapData }]
+            });
+            
+            pieChart.resize(); mapChart.resize();
+            window.addEventListener('resize', () => { pieChart.resize(); mapChart.resize(); });
+        }
+
+        initLandingChart();
+    </script>
+</body>
+</html>
